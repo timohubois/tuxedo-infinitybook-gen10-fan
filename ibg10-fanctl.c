@@ -1,7 +1,7 @@
 /*
- * fanctl - Uniwill Silent Fan Control Daemon
+ * fanctl - TUXEDO InfinityBook Gen10 Silent Fan Control Daemon
  *
- * Userspace daemon for controlling fans via the uniwill_fan kernel module.
+ * Userspace daemon for controlling fans via the tuxedo_infinitybook_gen10_fan kernel module.
  * Implements a smooth, silent fan curve with hysteresis.
  *
  * SPDX-License-Identifier: GPL-2.0+
@@ -16,7 +16,7 @@
 #include <dirent.h>
 
 /* Sysfs paths */
-#define SYSFS_BASE      "/sys/class/uniwill_fan/uniwill_fan"
+#define SYSFS_BASE      "/sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan"
 #define SYSFS_FAN1      SYSFS_BASE "/fan1_speed"
 #define SYSFS_FAN2      SYSFS_BASE "/fan2_speed"
 #define SYSFS_FAN_AUTO  SYSFS_BASE "/fan_auto"
@@ -256,24 +256,24 @@ static void restore_auto(void)
 
 static void print_banner(void)
 {
-    printf("\n");
-    printf("  Uniwill Silent Fan Control\n");
-    printf("  --------------------------\n");
-    printf("  Fan off:    < %d C\n", TEMP_SILENT);
-    printf("  Low speed:  %d-%d C\n", TEMP_SILENT, TEMP_LOW);
-    printf("  Med speed:  %d-%d C\n", TEMP_LOW, TEMP_MED);
-    printf("  High speed: %d-%d C\n", TEMP_MED, TEMP_HIGH);
-    printf("  Max speed:  > %d C\n", TEMP_MAX);
-    printf("\n");
-    printf("  CPU sensor: %s\n", hwmon_cpu[0] ? hwmon_cpu : "EC fallback");
-    printf("  GPU sensor: %s\n", hwmon_gpu[0] ? hwmon_gpu : "none");
-    printf("  Mode: Independent (CPU fan follows CPU temp, GPU fan follows GPU temp)\n");
-    printf("\n");
-    printf("  Trend: ^ = ramping up, v = slowing down, = = steady\n");
-    printf("  Ctrl+C to stop and restore automatic control\n");
-    printf("\n");
-    printf("Time     |     | Tmp | Fan\n");
-    printf("---------|-----|-----|-------\n");
+	printf("\n");
+	printf("  TUXEDO InfinityBook Gen10 Silent Fan Control\n");
+	printf("  ---------------------------------------------\n");
+	printf("  Fan off:    < %d C\n", TEMP_SILENT);
+	printf("  Low speed:  %d-%d C\n", TEMP_SILENT, TEMP_LOW);
+	printf("  Med speed:  %d-%d C\n", TEMP_LOW, TEMP_MED);
+	printf("  High speed: %d-%d C\n", TEMP_MED, TEMP_HIGH);
+	printf("  Max speed:  > %d C\n", TEMP_MAX);
+	printf("\n");
+	printf("  CPU sensor: %s\n", hwmon_cpu[0] ? hwmon_cpu : "EC fallback");
+	printf("  GPU sensor: %s\n", hwmon_gpu[0] ? hwmon_gpu : "none");
+	printf("  Mode: Independent (CPU fan follows CPU temp, GPU fan follows GPU temp)\n");
+	printf("\n");
+	printf("  Trend: ^ = ramping up, v = slowing down, = = steady\n");
+	printf("  Ctrl+C to stop and restore automatic control\n");
+	printf("\n");
+	printf("Time     |     | Tmp | Fan\n");
+	printf("---------|-----|-----|-------\n");
 }
 
 static const char *get_trend(int target, int *prev_target)
@@ -295,22 +295,22 @@ static const char *get_trend(int target, int *prev_target)
 
 static void usage(const char *prog)
 {
-    printf("Usage: %s [-h]\n", prog);
-    printf("\n");
-    printf("Uniwill Silent Fan Control Daemon\n");
-    printf("\n");
-    printf("Controls laptop fans via the uniwill_fan kernel module.\n");
-    printf("Runs interactively with status display, or as a background daemon.\n");
-    printf("\n");
-    printf("Options:\n");
-    printf("  -h    Show this help message\n");
-    printf("\n");
-    printf("Temperature thresholds:\n");
-    printf("  Fan off:    < %d C\n", TEMP_SILENT);
-    printf("  Low speed:  %d-%d C (25%%)\n", TEMP_SILENT, TEMP_LOW);
-    printf("  Med speed:  %d-%d C (50%%)\n", TEMP_LOW, TEMP_MED);
-    printf("  High speed: %d-%d C (75%%)\n", TEMP_MED, TEMP_HIGH);
-    printf("  Max speed:  > %d C (100%%)\n", TEMP_MAX);
+	printf("Usage: %s [-h]\n", prog);
+	printf("\n");
+	printf("TUXEDO InfinityBook Gen10 Silent Fan Control Daemon\n");
+	printf("\n");
+	printf("Controls laptop fans via the tuxedo_infinitybook_gen10_fan kernel module.\n");
+	printf("Runs interactively with status display, or as a background daemon.\n");
+	printf("\n");
+	printf("Options:\n");
+	printf("  -h    Show this help message\n");
+	printf("\n");
+	printf("Temperature thresholds:\n");
+	printf("  Fan off:    < %d C\n", TEMP_SILENT);
+	printf("  Low speed:  %d-%d C (25%%)\n", TEMP_SILENT, TEMP_LOW);
+	printf("  Med speed:  %d-%d C (50%%)\n", TEMP_LOW, TEMP_MED);
+	printf("  High speed: %d-%d C (75%%)\n", TEMP_MED, TEMP_HIGH);
+	printf("  Max speed:  > %d C (100%%)\n", TEMP_MAX);
 }
 
 int main(int argc, char *argv[])
@@ -338,11 +338,11 @@ int main(int argc, char *argv[])
     /* Check if running interactively */
     interactive = isatty(STDOUT_FILENO);
 
-    /* Check if kernel module is loaded */
-    if (access(SYSFS_BASE, F_OK) != 0) {
-        fprintf(stderr, "Error: uniwill_fan module not loaded\n");
-        return 1;
-    }
+	/* Check if kernel module is loaded */
+	if (access(SYSFS_BASE, F_OK) != 0) {
+		fprintf(stderr, "Error: tuxedo_infinitybook_gen10_fan module not loaded\n");
+		return 1;
+	}
 
     /* Find hwmon sensors */
     find_hwmon("k10temp", hwmon_cpu, sizeof(hwmon_cpu));

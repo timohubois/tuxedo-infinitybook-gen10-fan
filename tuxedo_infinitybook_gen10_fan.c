@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Uniwill Fan Control
+ * TUXEDO InfinityBook Gen10 Fan Control
  * Fan control for TUXEDO InfinityBook Pro AMD Gen10
  */
 
@@ -64,10 +64,10 @@ MODULE_ALIAS("wmi:" UNIWILL_WMI_MGMT_GUID_BC);
 #define FAN_ON_MIN_SPEED       0x19  /* 25 = ~12.5% minimum when on */
 
 static DEFINE_MUTEX(ec_lock);
-static struct class *fan_class;
-static struct device *fan_device;
-static struct cdev fan_cdev;
-static dev_t fan_dev;
+static struct class *ibg10_fan_class;
+static struct device *ibg10_fan_device;
+static struct cdev ibg10_fan_cdev;
+static dev_t ibg10_fan_dev;
 static bool fans_initialized = false;
 
 /* Read from EC RAM via WMI */
@@ -331,11 +331,11 @@ static int fan_release(struct inode *inode, struct file *file)
     return 0;
 }
 
-static const struct file_operations fan_fops = {
-    .owner = THIS_MODULE,
-    .open = fan_open,
-    .release = fan_release,
-    .unlocked_ioctl = fan_ioctl,
+static const struct file_operations ibg10_fan_fops = {
+	.owner = THIS_MODULE,
+	.open = fan_open,
+	.release = fan_release,
+	.unlocked_ioctl = fan_ioctl,
 };
 
 /* Device attributes for sysfs */
@@ -400,96 +400,96 @@ static ssize_t fan_auto_store(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_WO(fan_auto);
 
-static struct attribute *fan_attrs[] = {
-    &dev_attr_fan1_speed.attr,
-    &dev_attr_fan2_speed.attr,
-    &dev_attr_temp1.attr,
-    &dev_attr_fan_auto.attr,
-    NULL,
+static struct attribute *ibg10_fan_attrs[] = {
+	&dev_attr_fan1_speed.attr,
+	&dev_attr_fan2_speed.attr,
+	&dev_attr_temp1.attr,
+	&dev_attr_fan_auto.attr,
+	NULL,
 };
 
-static const struct attribute_group fan_attr_group = {
-    .attrs = fan_attrs,
+static const struct attribute_group ibg10_fan_attr_group = {
+	.attrs = ibg10_fan_attrs,
 };
 
-static int __init uniwill_fan_init(void)
+static int __init ibg10_fan_init(void)
 {
-    int ret;
+	int ret;
 
-    /* Check if WMI interface exists */
-    if (!wmi_has_guid(UNIWILL_WMI_MGMT_GUID_BC)) {
-        pr_err("Uniwill WMI GUID not found\n");
-        return -ENODEV;
-    }
+	/* Check if WMI interface exists */
+	if (!wmi_has_guid(UNIWILL_WMI_MGMT_GUID_BC)) {
+		pr_err("Uniwill WMI GUID not found\n");
+		return -ENODEV;
+	}
 
-    pr_info("Uniwill WMI interface found\n");
+	pr_info("Uniwill WMI interface found\n");
 
-    /* Create character device */
-    ret = alloc_chrdev_region(&fan_dev, 0, 1, "uniwill_fan");
-    if (ret < 0) {
-        pr_err("Failed to allocate chrdev region\n");
-        return ret;
-    }
+	/* Create character device */
+	ret = alloc_chrdev_region(&ibg10_fan_dev, 0, 1, "tuxedo_infinitybook_gen10_fan");
+	if (ret < 0) {
+		pr_err("Failed to allocate chrdev region\n");
+		return ret;
+	}
 
-    cdev_init(&fan_cdev, &fan_fops);
-    ret = cdev_add(&fan_cdev, fan_dev, 1);
-    if (ret < 0) {
-        pr_err("Failed to add cdev\n");
-        goto err_cdev;
-    }
+	cdev_init(&ibg10_fan_cdev, &ibg10_fan_fops);
+	ret = cdev_add(&ibg10_fan_cdev, ibg10_fan_dev, 1);
+	if (ret < 0) {
+		pr_err("Failed to add cdev\n");
+		goto err_cdev;
+	}
 
-    /* Create class */
-    fan_class = class_create("uniwill_fan");
-    if (IS_ERR(fan_class)) {
-        ret = PTR_ERR(fan_class);
-        pr_err("Failed to create class\n");
-        goto err_class;
-    }
+	/* Create class */
+	ibg10_fan_class = class_create("tuxedo_infinitybook_gen10_fan");
+	if (IS_ERR(ibg10_fan_class)) {
+		ret = PTR_ERR(ibg10_fan_class);
+		pr_err("Failed to create class\n");
+		goto err_class;
+	}
 
-    /* Create device node */
-    fan_device = device_create(fan_class, NULL, fan_dev, NULL, "uniwill_fan");
-    if (IS_ERR(fan_device)) {
-        pr_err("Failed to create device\n");
-        ret = PTR_ERR(fan_device);
-        goto err_device;
-    }
+	/* Create device node */
+	ibg10_fan_device = device_create(ibg10_fan_class, NULL, ibg10_fan_dev, NULL, "tuxedo_infinitybook_gen10_fan");
+	if (IS_ERR(ibg10_fan_device)) {
+		pr_err("Failed to create device\n");
+		ret = PTR_ERR(ibg10_fan_device);
+		goto err_device;
+	}
 
-    /* Add sysfs attributes */
-    ret = sysfs_create_group(&fan_device->kobj, &fan_attr_group);
-    if (ret) {
-        pr_err("Failed to create sysfs attributes\n");
-        goto err_sysfs;
-    }
+	/* Add sysfs attributes */
+	ret = sysfs_create_group(&ibg10_fan_device->kobj, &ibg10_fan_attr_group);
+	if (ret) {
+		pr_err("Failed to create sysfs attributes\n");
+		goto err_sysfs;
+	}
 
-    pr_info("Uniwill fan control v2 loaded\n");
-    pr_info("Use /sys/class/uniwill_fan/uniwill_fan/ for control\n");
+	pr_info("TUXEDO InfinityBook Gen10 fan control loaded\n");
+	pr_info("Use /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/ for control\n");
 
-    return 0;
+	return 0;
 
 err_sysfs:
-    device_destroy(fan_class, fan_dev);
+	device_destroy(ibg10_fan_class, ibg10_fan_dev);
 err_device:
-    class_destroy(fan_class);
+	class_destroy(ibg10_fan_class);
 err_class:
-    cdev_del(&fan_cdev);
+	cdev_del(&ibg10_fan_cdev);
 err_cdev:
-    unregister_chrdev_region(fan_dev, 1);
-    return ret;
+	unregister_chrdev_region(ibg10_fan_dev, 1);
+	return ret;
 }
 
-static void __exit uniwill_fan_exit(void)
+static void __exit ibg10_fan_exit(void)
 {
-    /* Restore auto mode on unload */
-    fan_set_auto();
+	/* Restore auto mode on unload */
+	fan_set_auto();
 
-    sysfs_remove_group(&fan_device->kobj, &fan_attr_group);
-    device_destroy(fan_class, fan_dev);
-    class_destroy(fan_class);
-    cdev_del(&fan_cdev);
-    unregister_chrdev_region(fan_dev, 1);
+	sysfs_remove_group(&ibg10_fan_device->kobj, &ibg10_fan_attr_group);
+	device_destroy(ibg10_fan_class, ibg10_fan_dev);
+	class_destroy(ibg10_fan_class);
+	cdev_del(&ibg10_fan_cdev);
+	unregister_chrdev_region(ibg10_fan_dev, 1);
 
-    pr_info("Uniwill fan control unloaded\n");
+	pr_info("TUXEDO InfinityBook Gen10 fan control unloaded\n");
 }
 
-module_init(uniwill_fan_init);
-module_exit(uniwill_fan_exit);
+module_init(ibg10_fan_init);
+module_exit(ibg10_fan_exit);

@@ -1,8 +1,8 @@
-# Uniwill Fan Control
+# TUXEDO InfinityBook Gen10 Fan Control
 
-Minimal, silent fan control for TUXEDO/Uniwill laptops.
+Minimal, silent fan control for TUXEDO InfinityBook Pro Gen10.
 
-> **⚠️ Hardware Notice:** This project has only been tested on a **TUXEDO InfinityBook Pro AMD Gen10** with a **Ryzen AI 9 HX 370** processor. It may work on other Uniwill-based laptops with the same WMI interface, but this is untested. Use at your own risk.
+> **Hardware Notice:** This project has only been tested on a **TUXEDO InfinityBook Pro AMD Gen10** with a **Ryzen AI 9 HX 370** processor. It may work on other InfinityBook Gen10 variants, but this is untested. Use at your own risk.
 
 ## Why?
 
@@ -27,18 +27,18 @@ This project provides just fan control with no other baggage, keeping the rest n
 ┌─────────────────────────────────────────────────────────────┐
 │                      User Space                             │
 │                                                             │
-│  uniwill-fanctl (daemon)                                    │
+│  ibg10-fanctl (daemon)                                      │
 │      │                                                      │
 │      ├──reads temps──▶ /sys/class/hwmon/ (k10temp, amdgpu) │
 │      │                                                      │
-│      ├──writes CPU fan─▶ /sys/class/uniwill_fan/fan1_speed │
-│      └──writes GPU fan─▶ /sys/class/uniwill_fan/fan2_speed │
+│      ├──writes CPU fan─▶ /sys/class/tuxedo_infinitybook_gen10_fan/fan1_speed │
+│      └──writes GPU fan─▶ /sys/class/tuxedo_infinitybook_gen10_fan/fan2_speed │
 │                              │                              │
 └──────────────────────────────│──────────────────────────────┘
                                │ sysfs
 ┌──────────────────────────────│──────────────────────────────┐
 │  Kernel                      ▼                              │
-│                    uniwill_fan.ko                           │
+│                    tuxedo_infinitybook_gen10_fan.ko         │
 │                         │                                   │
 │                         │ WMI calls                         │
 │                         ▼                                   │
@@ -88,10 +88,6 @@ Fan %
 - Arch Linux, kernel 6.x
 - WMI GUID `ABBC0F6F-8EA1-11D1-00A0-C90629100000`
 
-**Untested but may work on:**
-
-- Other Uniwill-based laptops with the same WMI GUID
-
 ## Installation
 
 ### Prerequisites
@@ -103,8 +99,8 @@ sudo pacman -S base-devel linux-headers dkms
 ### Step 1: Build and Test the Module
 
 ```bash
-git clone https://github.com/timohubois/uniwill-fan-control.git
-cd uniwill-fan-control
+git clone https://github.com/timohubois/tuxedo-infinitybook-gen10-fan.git
+cd tuxedo-infinitybook-gen10-fan
 
 # Build
 make
@@ -113,13 +109,13 @@ make
 sudo make load
 
 # Verify it works
-cat /sys/class/uniwill_fan/uniwill_fan/temp1      # EC temp (degrees C)
-cat /sys/class/uniwill_fan/uniwill_fan/fan1_speed # Fan speed (0-200)
+cat /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/temp1      # EC temp (degrees C)
+cat /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan1_speed # Fan speed (0-200)
 
 # Test manual control
-echo 100 | sudo tee /sys/class/uniwill_fan/uniwill_fan/fan1_speed  # Set 50%
-echo 50 | sudo tee /sys/class/uniwill_fan/uniwill_fan/fan1_speed   # Set 25%
-echo 1 | sudo tee /sys/class/uniwill_fan/uniwill_fan/fan_auto      # Restore auto
+echo 100 | sudo tee /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan1_speed  # Set 50%
+echo 50 | sudo tee /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan1_speed   # Set 25%
+echo 1 | sudo tee /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan_auto      # Restore auto
 ```
 
 If this works, proceed to step 2.
@@ -128,10 +124,10 @@ If this works, proceed to step 2.
 
 ```bash
 # Run daemon manually (Ctrl+C to stop)
-sudo ./uniwill-fanctl
+sudo ./ibg10-fanctl
 ```
 
-You should see temperature and fan speed updating. Run `./uniwill-fanctl -h` for help. If this works, proceed to step 3.
+You should see temperature and fan speed updating. Run `./ibg10-fanctl -h` for help. If this works, proceed to step 3.
 
 ### Step 3: Install Permanently
 
@@ -140,8 +136,8 @@ You should see temperature and fan speed updating. Run `./uniwill-fanctl -h` for
 DKMS automatically rebuilds the module when you update your kernel:
 
 ```bash
-sudo make uniwill-fan-control-install-dkms
-sudo systemctl enable --now uniwill-fan.service
+sudo make tuxedo-infinitybook-gen10-fan-install-dkms
+sudo systemctl enable --now tuxedo-infinitybook-gen10-fan.service
 ```
 
 #### Option B: Manual Installation
@@ -150,7 +146,7 @@ Without DKMS, you'll need to rebuild manually after kernel updates:
 
 ```bash
 sudo make install-all
-sudo systemctl enable --now uniwill-fan.service
+sudo systemctl enable --now tuxedo-infinitybook-gen10-fan.service
 ```
 
 ### Manual Installation (Step-by-Step)
@@ -159,14 +155,14 @@ If you prefer step-by-step:
 
 ```bash
 # Install module via DKMS (or use 'make install' for non-DKMS)
-sudo make uniwill-fan-control-dkms-install
+sudo make tuxedo-infinitybook-gen10-fan-dkms-install
 
 # Auto-load on boot
 sudo make install-autoload
 
 # Install and enable service
 sudo make install-service
-sudo systemctl enable --now uniwill-fan.service
+sudo systemctl enable --now tuxedo-infinitybook-gen10-fan.service
 ```
 
 ## Usage
@@ -175,36 +171,36 @@ sudo systemctl enable --now uniwill-fan.service
 
 ```bash
 # Load module
-sudo modprobe uniwill_fan
+sudo modprobe tuxedo_infinitybook_gen10_fan
 
 # Check current values
-cat /sys/class/uniwill_fan/uniwill_fan/temp1      # EC temp (degrees C)
-cat /sys/class/uniwill_fan/uniwill_fan/fan1_speed # Fan speed (0-200)
+cat /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/temp1      # EC temp (degrees C)
+cat /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan1_speed # Fan speed (0-200)
 
 # Set fan speed (0-200, where 200 = 100%)
-echo 100 | sudo tee /sys/class/uniwill_fan/uniwill_fan/fan1_speed
+echo 100 | sudo tee /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan1_speed
 
 # Restore automatic control
-echo 1 | sudo tee /sys/class/uniwill_fan/uniwill_fan/fan_auto
+echo 1 | sudo tee /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan_auto
 ```
 
 ### Fan Curve Daemon
 
 ```bash
 # Run manually (interactive mode with status display)
-sudo ./uniwill-fanctl
+sudo ./ibg10-fanctl
 
 # Show help and configuration
-./uniwill-fanctl -h
+./ibg10-fanctl -h
 
 # Or use the systemd service
-sudo systemctl start uniwill-fan.service
-sudo systemctl status uniwill-fan.service
+sudo systemctl start tuxedo-infinitybook-gen10-fan.service
+sudo systemctl status tuxedo-infinitybook-gen10-fan.service
 ```
 
 ### Configuration
 
-The fan curve thresholds are compiled into the binary. To customize, edit `uniwill-fanctl.c` and rebuild:
+The fan curve thresholds are compiled into the binary. To customize, edit `ibg10-fanctl.c` and rebuild:
 
 ```c
 /* Temperature thresholds (C) */
@@ -227,7 +223,7 @@ The fan curve thresholds are compiled into the binary. To customize, edit `uniwi
 Then rebuild and reinstall:
 
 ```bash
-make uniwill-fanctl
+make ibg10-fanctl
 sudo make install-service
 ```
 
@@ -236,7 +232,7 @@ sudo make install-service
 ### DKMS
 
 ```bash
-sudo make uniwill-fan-control-uninstall-dkms
+sudo make tuxedo-infinitybook-gen10-fan-uninstall-dkms
 ```
 
 ### Non-DKMS
@@ -248,7 +244,7 @@ sudo make uninstall-all
 Or manually:
 
 ```bash
-sudo systemctl disable --now uniwill-fan.service
+sudo systemctl disable --now tuxedo-infinitybook-gen10-fan.service
 sudo make uninstall-service
 sudo make uninstall-autoload
 sudo make uninstall
@@ -267,7 +263,7 @@ ls /sys/bus/wmi/devices/ | grep ABBC0F6
 Check kernel logs:
 
 ```bash
-dmesg | grep uniwill
+dmesg | grep tuxedo_infinitybook
 ```
 
 ### Fans not responding
@@ -275,8 +271,8 @@ dmesg | grep uniwill
 Verify the sysfs interface exists:
 
 ```bash
-ls /sys/class/uniwill_fan/uniwill_fan/
-cat /sys/class/uniwill_fan/uniwill_fan/fan1_speed
+ls /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/
+cat /sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan1_speed
 ```
 
 ### Service not starting
@@ -284,14 +280,14 @@ cat /sys/class/uniwill_fan/uniwill_fan/fan1_speed
 Check if module is loaded:
 
 ```bash
-lsmod | grep uniwill_fan
+lsmod | grep tuxedo_infinitybook_gen10_fan
 ```
 
 Check service status:
 
 ```bash
-sudo systemctl status uniwill-fan.service
-sudo journalctl -u uniwill-fan.service
+sudo systemctl status tuxedo-infinitybook-gen10-fan.service
+sudo journalctl -u tuxedo-infinitybook-gen10-fan.service
 ```
 
 ### Fan never fully stops
@@ -304,10 +300,10 @@ This is intentional. The daemon keeps the fan at a minimum of 12.5% to prevent t
 
 | Path | Access | Description |
 |------|--------|-------------|
-| `/sys/class/uniwill_fan/uniwill_fan/fan1_speed` | RW | CPU fan speed (0-200) |
-| `/sys/class/uniwill_fan/uniwill_fan/fan2_speed` | RW | GPU fan speed (0-200) |
-| `/sys/class/uniwill_fan/uniwill_fan/temp1` | RO | EC CPU temperature sensor |
-| `/sys/class/uniwill_fan/uniwill_fan/fan_auto` | WO | Write 1 to restore auto mode |
+| `/sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan1_speed` | RW | CPU fan speed (0-200) |
+| `/sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan2_speed` | RW | GPU fan speed (0-200) |
+| `/sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/temp1` | RO | EC CPU temperature sensor |
+| `/sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan/fan_auto` | WO | Write 1 to restore auto mode |
 
 ### EC Registers
 

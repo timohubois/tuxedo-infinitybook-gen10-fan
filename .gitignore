@@ -12,7 +12,7 @@ modules.builtin
 Module.symvers
 
 # Compiled binaries
-uniwill-fanctl
+ibg10-fanctl
 
 # Editor
 *.swp

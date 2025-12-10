@@ -1,0 +1,13 @@
+[Unit]
+Description=TUXEDO InfinityBook Gen10 Silent Fan Control
+After=multi-user.target
+ConditionPathExists=/sys/class/tuxedo_infinitybook_gen10_fan/tuxedo_infinitybook_gen10_fan
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ibg10-fanctl
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
