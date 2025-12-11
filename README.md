@@ -60,13 +60,14 @@ This project provides just fan control with no other baggage, keeping the rest n
 **Fan curve:**
 
 ```
-Fan %                                 (linear interpolation between points)
-100 │                                                   o 92°C
- 75 │                                          o 86°C
- 50 │                                 o 78°C
- 25 │                        o 70°C
- 12 │────────────── o 62°C   (minimum, prevents EC fighting)
-    └──────────────────────────────────────────────────────────▶ Temp °C
+Fan %
+100 │                                                       *
+ 75 │                                               *
+ 50 │                                     *
+ 25 │                           *
+ 12 │***************** (minimum, prevents EC fighting)
+    └─────────────────┬─────────┬─────────┬─────────┬───────┬───▶ Temp °C
+                     62        70        78        86      92
 ```
 
 ## Features
@@ -321,11 +322,9 @@ The fan speed range is 0-200 (where 200 = 100%):
 
 | Value | Behavior |
 |-------|----------|
-| 0 | Fan off |
+| 0 | Fan off (internally set to 1 to prevent EC override) |
 | 1-24 | Clamped to 25 (minimum running speed) |
 | 25-200 | Direct PWM control |
-
-**Note:** The EC ramps fan speed smoothly, so changes aren't instant.
 
 ## License
 
