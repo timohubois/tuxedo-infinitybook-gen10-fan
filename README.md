@@ -24,27 +24,27 @@ This project provides just fan control with no other baggage, keeping the rest n
 ## How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      User Space                             │
-│                                                             │
-│  ibg10-fanctl (daemon)                                             │
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  User Space                                                                  │
+│                                                                              │
+│  ibg10-fanctl (daemon)                                                       │
 │      │                                                                       │
 │      ├──reads temps──▶ /sys/class/hwmon/ (k10temp, amdgpu)                   │
 │      │                                                                       │
 │      ├──writes CPU fan─▶ /sys/class/tuxedo_infinitybook_gen10_fan/fan1_speed │
 │      └──writes GPU fan─▶ /sys/class/tuxedo_infinitybook_gen10_fan/fan2_speed │
-│                              │                              │
-└──────────────────────────────│──────────────────────────────┘
+│                              │                                               │
+└──────────────────────────────│───────────────────────────────────────────────┘
                                │ sysfs
-┌──────────────────────────────│──────────────────────────────┐
-│  Kernel                      ▼                              │
-│                    tuxedo_infinitybook_gen10_fan.ko         │
-│                         │                                   │
-│                         │ WMI calls                         │
-│                         ▼                                   │
-│                 ACPI WMI Interface ──▶ Embedded Controller  │
-│                                              │              │
-└──────────────────────────────────────────────│──────────────┘
+┌──────────────────────────────│───────────────────────────────────────────────┐
+│  Kernel                      ▼                                               │
+│                    tuxedo_infinitybook_gen10_fan.ko                          │
+│                         │                                                    │
+│                         │ WMI calls                                          │
+│                         ▼                                                    │
+│                 ACPI WMI Interface ──▶ Embedded Controller                   │
+│                                              │                               │
+└──────────────────────────────────────────────│───────────────────────────────┘
                                                ▼
                                      CPU Fan & GPU Fan
 ```
@@ -60,14 +60,13 @@ This project provides just fan control with no other baggage, keeping the rest n
 **Fan curve:**
 
 ```
-Fan %
-100│                                    ┌────
- 75│                            ┌───────┘
- 50│                    ┌───────┘
- 25│            ┌───────┘
-~13│────────────┘ (minimum, prevents EC fighting)
-    └────────┬───────┬───────┬───────┬───────┬──▶ Temp °C
-            62      70      78      86      92
+Fan %                                 (linear interpolation between points)
+100 │                                                   o 92°C
+ 75 │                                          o 86°C
+ 50 │                                 o 78°C
+ 25 │                        o 70°C
+ 12 │────────────── o 62°C   (minimum, prevents EC fighting)
+    └──────────────────────────────────────────────────────────▶ Temp °C
 ```
 
 ## Features
