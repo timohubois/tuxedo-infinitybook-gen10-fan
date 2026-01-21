@@ -24,7 +24,7 @@
 #define HWMON_BASE "/sys/class/hwmon"
 
 /* Temperature thresholds (C) */
-#define TEMP_OFF        55
+#define TEMP_OFF        54
 #define TEMP_SILENT     61
 #define TEMP_LOW        67
 #define TEMP_MED        73
@@ -32,7 +32,7 @@
 #define TEMP_MAX        90
 
 /* Hysteresis - how much cooler before stepping down */
-#define HYSTERESIS      6
+#define HYSTERESIS      3
 
 /* Fan speeds (0-255 hwmon scale). EC uses 0-200; we convert. */
 #define SPEED_OFF       0
