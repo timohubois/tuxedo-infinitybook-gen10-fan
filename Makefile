@@ -6,7 +6,7 @@ PREFIX ?= /usr/local
 
 # DKMS variables
 DKMS_NAME := uniwill-ibg10-fanctl
-DKMS_VERSION := 0.2.0
+DKMS_VERSION := 0.2.1
 DKMS_SRC := /usr/src/$(DKMS_NAME)-$(DKMS_VERSION)
 
 CC ?= gcc
