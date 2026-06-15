@@ -1,6 +1,6 @@
 # Maintainer: Timo Hubois <hi@pixelsaft.wtf>
 pkgname=uniwill-ibg10-fanctl-dkms
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc="Silent fan control for TUXEDO InfinityBook Pro Gen10 (DKMS, uniwill_ibg10_fanctl)"
 arch=('x86_64')

@@ -24,7 +24,7 @@
 
 MODULE_DESCRIPTION("Fan control for TUXEDO InfinityBook Pro AMD Gen10");
 MODULE_AUTHOR("Timo Hubois");
-MODULE_VERSION("0.2.0");
+MODULE_VERSION("0.2.1");
 MODULE_LICENSE("GPL");
 
 /* WMI GUIDs for Uniwill laptops */
@@ -71,37 +71,61 @@ struct ibg10_data {
 	struct mutex ec_lock;
 };
 
+/*
+ * The EC signals a failed access by filling the return buffer with 0xfe
+ * (tuxedo-drivers checks the first dword against 0xfefefefe). Such errors
+ * happen transiently when the EC is busy, so retry a few times. Treating
+ * the marker as data corrupts the EC on read-modify-write cycles.
+ */
+#define UW_EC_RETRIES		5
+#define UW_EC_ERROR_MARKER	0xfefefefe
+
 static int uw_ec_read(struct ibg10_data *data, u16 addr, u8 *value)
 {
 	acpi_status status;
 	union acpi_object *out_obj;
-	u32 wmi_arg[10] = { 0 };
+	u32 wmi_arg[10];
 	u8 *arg_bytes = (u8 *)wmi_arg;
 	struct acpi_buffer in = { sizeof(wmi_arg), wmi_arg };
-	struct acpi_buffer out = { ACPI_ALLOCATE_BUFFER, NULL };
-	int ret = 0;
+	struct acpi_buffer out;
+	int retries = UW_EC_RETRIES;
+	u32 result_dword;
+	int ret;
 
 	mutex_lock(&data->ec_lock);
+
+retry:
+	out = (struct acpi_buffer){ ACPI_ALLOCATE_BUFFER, NULL };
+	ret = 0;
+	memset(wmi_arg, 0, sizeof(wmi_arg));
 
 	arg_bytes[0] = addr & 0xff;
 	arg_bytes[1] = (addr >> 8) & 0xff;
 	arg_bytes[5] = 1; /* read */
 
 	status = wmi_evaluate_method(UNIWILL_WMI_MGMT_GUID_BC, 0, 4, &in, &out);
+	out_obj = out.pointer;
 	if (ACPI_FAILURE(status)) {
-		pr_err("WMI read failed for addr 0x%04x\n", addr);
 		ret = -EIO;
-		goto out;
+	} else if (out_obj && out_obj->type == ACPI_TYPE_BUFFER && out_obj->buffer.length >= 4) {
+		memcpy(&result_dword, out_obj->buffer.pointer, 4);
+		if (result_dword == UW_EC_ERROR_MARKER)
+			ret = -EIO;
+		else
+			*value = out_obj->buffer.pointer[0];
+	} else {
+		ret = -EIO;
 	}
 
-	out_obj = out.pointer;
-	if (out_obj && out_obj->type == ACPI_TYPE_BUFFER && out_obj->buffer.length >= 1)
-		*value = out_obj->buffer.pointer[0];
-	else
-		ret = -EIO;
+	kfree(out.pointer);
 
-	kfree(out_obj);
-out:
+	if (ret && --retries > 0) {
+		msleep(20);
+		goto retry;
+	}
+	if (ret)
+		pr_err("WMI read failed for addr 0x%04x\n", addr);
+
 	mutex_unlock(&data->ec_lock);
 	return ret;
 }
@@ -109,16 +133,20 @@ out:
 static int uw_ec_write(struct ibg10_data *data, u16 addr, u8 value)
 {
 	acpi_status status;
-	u32 wmi_arg[10] = { 0 };
+	union acpi_object *out_obj;
+	u32 wmi_arg[10];
 	u8 *arg_bytes = (u8 *)wmi_arg;
 	struct acpi_buffer in = { sizeof(wmi_arg), wmi_arg };
-	struct acpi_buffer out = { ACPI_ALLOCATE_BUFFER, NULL };
-	int ret = 0;
-	int retries = 3;
+	struct acpi_buffer out;
+	int retries = UW_EC_RETRIES;
+	u32 result_dword;
+	int ret;
 
 	mutex_lock(&data->ec_lock);
 
 retry:
+	out = (struct acpi_buffer){ ACPI_ALLOCATE_BUFFER, NULL };
+	ret = 0;
 	memset(wmi_arg, 0, sizeof(wmi_arg));
 
 	arg_bytes[0] = addr & 0xff;
@@ -127,16 +155,24 @@ retry:
 	arg_bytes[5] = 0; /* write */
 
 	status = wmi_evaluate_method(UNIWILL_WMI_MGMT_GUID_BC, 0, 4, &in, &out);
+	out_obj = out.pointer;
 	if (ACPI_FAILURE(status)) {
-		if (--retries > 0) {
-			msleep(50);
-			goto retry;
-		}
-		pr_err("WMI write failed for addr 0x%04x\n", addr);
 		ret = -EIO;
+	} else if (out_obj && out_obj->type == ACPI_TYPE_BUFFER && out_obj->buffer.length >= 4) {
+		memcpy(&result_dword, out_obj->buffer.pointer, 4);
+		if (result_dword == UW_EC_ERROR_MARKER)
+			ret = -EIO;
 	}
 
 	kfree(out.pointer);
+
+	if (ret && --retries > 0) {
+		msleep(20);
+		goto retry;
+	}
+	if (ret)
+		pr_err("WMI write failed for addr 0x%04x\n", addr);
+
 	mutex_unlock(&data->ec_lock);
 	return ret;
 }
@@ -145,6 +181,7 @@ static int init_custom_fan_table(struct ibg10_data *data)
 {
 	u8 val0, val1;
 	int i;
+	int ret;
 	u8 temp_offset = 115;
 
 	if (data->fans_initialized)
@@ -153,7 +190,9 @@ static int init_custom_fan_table(struct ibg10_data *data)
 	pr_info("Initializing custom fan table...\n");
 
 	/* Toggle custom profile bit */
-	uw_ec_read(data, UW_EC_REG_CUSTOM_PROFILE, &val0);
+	ret = uw_ec_read(data, UW_EC_REG_CUSTOM_PROFILE, &val0);
+	if (ret < 0)
+		return ret;
 	val0 &= ~UW_EC_CUSTOM_PROFILE_BIT;
 	uw_ec_write(data, UW_EC_REG_CUSTOM_PROFILE, val0);
 	msleep(50);
@@ -164,12 +203,16 @@ static int init_custom_fan_table(struct ibg10_data *data)
 	uw_ec_write(data, UW_EC_REG_MANUAL_MODE, 0x01);
 
 	/* Disable full fan mode */
-	uw_ec_read(data, UW_EC_REG_FAN_MODE, &val0);
+	ret = uw_ec_read(data, UW_EC_REG_FAN_MODE, &val0);
+	if (ret < 0)
+		return ret;
 	if (val0 & UW_EC_FAN_MODE_BIT)
 		uw_ec_write(data, UW_EC_REG_FAN_MODE, val0 & ~UW_EC_FAN_MODE_BIT);
 
 	/* Enable custom fan table 0 (bit 7) */
-	uw_ec_read(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_0, &val0);
+	ret = uw_ec_read(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_0, &val0);
+	if (ret < 0)
+		return ret;
 	if (!((val0 >> 7) & 1))
 		uw_ec_write(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_0, val0 | BIT(7));
 
@@ -194,7 +237,9 @@ static int init_custom_fan_table(struct ibg10_data *data)
 	}
 
 	/* Enable custom fan table 1 (bit 2) */
-	uw_ec_read(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_1, &val1);
+	ret = uw_ec_read(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_1, &val1);
+	if (ret < 0)
+		return ret;
 	if (!((val1 >> 2) & 1))
 		uw_ec_write(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_1, val1 | BIT(2));
 
@@ -257,22 +302,26 @@ static int fan_set_auto(struct ibg10_data *data)
 {
 	u8 val0, val1, mode;
 
-	uw_ec_read(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_1, &val1);
-	if ((val1 >> 2) & 1)
+	/*
+	 * Called from module exit, so restore best-effort: a failed read only
+	 * skips its own read-modify-write instead of aborting the sequence.
+	 */
+	if (!uw_ec_read(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_1, &val1) &&
+	    (val1 >> 2) & 1)
 		uw_ec_write(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_1, val1 & ~BIT(2));
 
-	uw_ec_read(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_0, &val0);
-	if ((val0 >> 7) & 1)
+	if (!uw_ec_read(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_0, &val0) &&
+	    (val0 >> 7) & 1)
 		uw_ec_write(data, UW_EC_REG_USE_CUSTOM_FAN_TABLE_0, val0 & ~BIT(7));
 
-	uw_ec_read(data, UW_EC_REG_FAN_MODE, &mode);
-	if (mode & UW_EC_FAN_MODE_BIT)
+	if (!uw_ec_read(data, UW_EC_REG_FAN_MODE, &mode) &&
+	    (mode & UW_EC_FAN_MODE_BIT))
 		uw_ec_write(data, UW_EC_REG_FAN_MODE, mode & ~UW_EC_FAN_MODE_BIT);
 
 	uw_ec_write(data, UW_EC_REG_MANUAL_MODE, 0x00);
 
-	uw_ec_read(data, UW_EC_REG_CUSTOM_PROFILE, &val0);
-	if (val0 & UW_EC_CUSTOM_PROFILE_BIT)
+	if (!uw_ec_read(data, UW_EC_REG_CUSTOM_PROFILE, &val0) &&
+	    (val0 & UW_EC_CUSTOM_PROFILE_BIT))
 		uw_ec_write(data, UW_EC_REG_CUSTOM_PROFILE, val0 & ~UW_EC_CUSTOM_PROFILE_BIT);
 
 	data->fans_initialized = false;
